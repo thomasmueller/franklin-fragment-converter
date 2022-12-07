@@ -1,5 +1,6 @@
 package com.adobe.franklin.fragments.converter;
 
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -9,12 +10,24 @@ public class ConvertFragmentsToSQL {
     
     public static void main(String... args) {
         String fileName = null;
+        String jdbcDriver = null;
+        String jdbcUrl = null;
+        String jdbcUser = "";
+        String jdbcPassword = "";
         long maxRows = Long.MAX_VALUE;
         for(int i=0; i<args.length; i++) {
             if ("--fileName".equals(args[i])) {
                 fileName = args[++i];
             } else if ("--maxRows".equals(args[i])) {
                 maxRows = Long.parseLong(args[++i]);
+            } else if ("--jdbcDriver".equals(args[i])) {
+                jdbcDriver = args[++i];
+            } else if ("--jdbcUrl".equals(args[i])) {
+                jdbcUrl = args[++i];
+            } else if ("--jdbcUser".equals(args[i])) {
+                jdbcUser = args[++i];
+            } else if ("--jdbcPassword".equals(args[i])) {
+                jdbcPassword = args[++i];
             } else {
                 printUsage();
                 throw new IllegalArgumentException(args[i]);
@@ -24,8 +37,16 @@ public class ConvertFragmentsToSQL {
             printUsage();
         } else {
             List<String> list = getSQLStatements(fileName, maxRows);
-            for (String sql : list) {
-                System.out.println(sql);
+            if (jdbcUrl != null) {
+                Connection conn = SQLUtils.getJdbcConnection(jdbcDriver, jdbcUrl, jdbcUser, jdbcPassword);
+                long time = System.currentTimeMillis();
+                SQLUtils.executeSQL(conn, list);
+                time = System.currentTimeMillis() - time;
+                System.out.println(list.size() + " SQL statements executed in " + time + " ms");
+            } else {
+                for (String sql : list) {
+                    System.out.println(sql);
+                }
             }
         }
     }

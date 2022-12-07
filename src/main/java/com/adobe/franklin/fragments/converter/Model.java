@@ -14,8 +14,8 @@ class Model {
         buff.append("drop table if exists \"" + tableName + "\";\n");
         buff.append("create table \"" + tableName + "\"(\n");
         // TODO probably the primary key needs to be a combination of the path and the variation
-        buff.append("    \"_path\" varchar(255) primary key,\n");
-        buff.append("    \"_variation\" varchar(255)");
+        buff.append("    \"_path\" varchar(8000) primary key,\n");
+        buff.append("    \"_variation\" varchar(8000)");
         for (Column col : columns) {
             buff.append(",\n");
             buff.append("    " + col.toCreateSQL());
