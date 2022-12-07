@@ -2,16 +2,23 @@ package com.adobe.franklin.fragments.converter;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+
+import com.adobe.franklin.fragments.tables.Fragment;
+import com.adobe.franklin.fragments.tables.FragmentReference;
 
 class Model {
     String path;
     String tableName;
     ArrayList<Column> columns = new ArrayList<>();
     
-    public String toDropCreateSQL() {
+    public String toDropSQL() {
+        return "drop table if exists \"" + tableName + "\"";
+    }
+    
+    public String toCreateSQL() {
         StringBuilder buff = new StringBuilder();
-        buff.append("drop table if exists \"" + tableName + "\";\n");
         buff.append("create table \"" + tableName + "\"(\n");
         // TODO probably the primary key needs to be a combination of the path and the variation
         buff.append("    \"_path\" varchar(8000) primary key,\n");
@@ -20,7 +27,7 @@ class Model {
             buff.append(",\n");
             buff.append("    " + col.toCreateSQL());
         }
-        buff.append("\n);");
+        buff.append("\n)");
         return buff.toString();
     }
     
@@ -61,7 +68,38 @@ class Model {
             }
             buff.append(sqlValue);
         }
-        buff.append(");");
+        buff.append(")");
         return buff.toString();
     }
+
+    public List<FragmentReference> getReferenceList(HashMap<String, Fragment> fragmentMap, Fragment source, Json data) {
+        List<FragmentReference> result = new ArrayList<>();
+        for (Column col : columns) {
+            String key = col.name;
+            if (!data.containsKey(key)) {
+                key = col.name + "S";
+            }
+            if (!data.containsKey(key)) {
+                // ignore
+            } else if (data.isStringProperty(key)) {
+                String value = data.getStringProperty(key);
+                FragmentReference ref = source.createReferenceIfPossible(fragmentMap, value);
+                if (ref != null) {
+                    result.add(ref);
+                }
+            } else if (data.isArray(key)) {
+                List<String> list = data.getStringArray(key);
+                for (String value : list) {
+                    FragmentReference ref = source.createReferenceIfPossible(fragmentMap, value);
+                    if (ref != null) {
+                        result.add(ref);
+                    }
+                }
+            } else {
+                throw new IllegalArgumentException(data.getChild(key).toString());
+            }
+        }
+        return result;
+    }
+    
 }

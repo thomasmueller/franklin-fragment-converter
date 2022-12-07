@@ -6,6 +6,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 
+import com.adobe.franklin.fragments.tables.Fragment;
+import com.adobe.franklin.fragments.tables.FragmentReference;
+
 public class ConvertFragmentsToSQL {
     
     public static void main(String... args) {
@@ -59,11 +62,15 @@ public class ConvertFragmentsToSQL {
     
     public static List<String> getSQLStatements(String fileName, long maxLines) {
         Json file = Json.parseFile(fileName);
+        ArrayList<String> result = new ArrayList<>();
+        long row = 0;
+
         Json models = file.getChild("models");
         HashMap<String, Model> modelMap = new HashMap<>();
-        ArrayList<String> result = new ArrayList<>();
-        
         for (Entry<String, Json> entry : models.getChildren().entrySet()) {
+            if (++row > maxLines) {
+                break;
+            }
             String key = entry.getKey();
             Json columns = entry.getValue();
             Model model = new Model();
@@ -79,13 +86,20 @@ public class ConvertFragmentsToSQL {
                 column.isArray = column.dataType.endsWith("]");
                 model.columns.add(column);
             }
-            result.add(model.toDropCreateSQL());
+            result.add(model.toDropSQL());
+            result.add(model.toCreateSQL());
             modelMap.put(key, model);
         }
+        
         Json fragments = file.getChildren().get("fragments");
-        long row = 0;
+        result.add(Fragment.toDropSQL());
+        result.add(Fragment.toCreateSQL());
+        result.add(FragmentReference.toDropSQL());
+        result.addAll(FragmentReference.toCreateSQL());
+        HashMap<String, Fragment> fragmentMap = new HashMap<>();
+        long fragmentId = 0;
         for (Entry<String, Json> entry : fragments.getChildren().entrySet()) {
-            if (row++ > maxLines) {
+            if (++row > maxLines) {
                 break;
             }
             String path = entry.getKey();
@@ -93,7 +107,26 @@ public class ConvertFragmentsToSQL {
             String modelName = data.getStringProperty("_model");
             Model model = modelMap.get(modelName);
             result.add(model.toInsertSQL(path, entry.getValue()));
+            Fragment fragment = new Fragment(fragmentId, path, modelName);
+            fragmentId++;
+            fragmentMap.put(path, fragment);
+            result.add(fragment.toInsertSQL());
         }
+        for (Entry<String, Json> entry : fragments.getChildren().entrySet()) {
+            if (++row > maxLines) {
+                break;
+            }
+            String path = entry.getKey();
+            Json data = entry.getValue();
+            String modelName = data.getStringProperty("_model");
+            Model model = modelMap.get(modelName);
+            Fragment fragment = fragmentMap.get(path);
+            List<FragmentReference> references = model.getReferenceList(fragmentMap, fragment, data);
+            for (FragmentReference ref : references) {
+                result.add(ref.toInsertSQL());
+            }
+        }
+        
         return result;
     }
 
