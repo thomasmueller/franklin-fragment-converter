@@ -1,8 +1,13 @@
 package com.adobe.franklin.fragments.tables;
 
+import java.sql.Types;
 import java.util.HashMap;
+import java.util.List;
 
-import com.adobe.franklin.fragments.converter.SQLUtils;
+import com.adobe.franklin.fragments.converter.sql.PreparedSQLStatement;
+import com.adobe.franklin.fragments.converter.sql.SQLArgument;
+import com.adobe.franklin.fragments.converter.sql.SQLValue;
+import com.adobe.franklin.fragments.converter.sql.SimpleSQLStatement;
 
 public class Fragment {
 
@@ -18,24 +23,27 @@ public class Fragment {
         this.model = model;
     }
     
-    public static String toDropSQL() {
-        return "drop table if exists " + TABLE_NAME;
+    public static SimpleSQLStatement toDropSQL() {
+        return new SimpleSQLStatement("drop table if exists " + TABLE_NAME);
     }
     
-    public static String toCreateSQL() {
-        StringBuilder buff = new StringBuilder();
-        buff.append("create table " + TABLE_NAME + "(\n");
-        buff.append("    id bigint primary key,\n");
-        buff.append("    path varchar(8000),\n");
-        buff.append("    model varchar(8000)\n");
-        buff.append(")");
-        return buff.toString();
+    public static SimpleSQLStatement toCreateSQL() {
+        String sql = "create table " + TABLE_NAME + "(\n" +
+                "    id bigint primary key,\n" +
+                "    path varchar(8000),\n" +
+                "    model varchar(8000)\n" +
+                ")";
+        return new SimpleSQLStatement(sql);
     }
 
-    public String toInsertSQL() {
-        return "insert into " + TABLE_NAME + "(id, path, model) values(" +
-                id + ", " + SQLUtils.convertToSQLString(path) +
-                ", " + SQLUtils.convertToSQLString(model) + ");\n";
+    public PreparedSQLStatement toInsertSQL() {
+        String template = "insert into " + TABLE_NAME + "(id, path, model) values(?, ?, ?)";
+        List<SQLArgument> arguments = List.of(
+                new SQLValue(Types.BIGINT, id),
+                new SQLValue(Types.VARCHAR, path),
+                new SQLValue(Types.VARCHAR, model)
+        );
+        return new PreparedSQLStatement(template, arguments);
     }
     
     public FragmentReference createReferenceIfPossible(HashMap<String, Fragment> fragmentMap, String target) {

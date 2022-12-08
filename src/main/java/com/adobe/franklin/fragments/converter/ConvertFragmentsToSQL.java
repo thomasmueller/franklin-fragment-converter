@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 
+import com.adobe.franklin.fragments.converter.sql.SQLStatement;
+import com.adobe.franklin.fragments.converter.sql.SQLUtils;
 import com.adobe.franklin.fragments.tables.Fragment;
 import com.adobe.franklin.fragments.tables.FragmentReference;
 
@@ -17,7 +19,10 @@ public class ConvertFragmentsToSQL {
         String jdbcUrl = null;
         String jdbcUser = "";
         String jdbcPassword = "";
+
         long maxRows = Long.MAX_VALUE;
+        int batchSize = 1000;
+
         for(int i=0; i<args.length; i++) {
             if ("--fileName".equals(args[i])) {
                 fileName = args[++i];
@@ -31,25 +36,26 @@ public class ConvertFragmentsToSQL {
                 jdbcUser = args[++i];
             } else if ("--jdbcPassword".equals(args[i])) {
                 jdbcPassword = args[++i];
+            } else if ("--batchSize".equals(args[i])) {
+                batchSize = Integer.parseInt(args[++i]);
             } else {
                 printUsage();
                 throw new IllegalArgumentException(args[i]);
             }
         }
+
         if (fileName == null) {
             printUsage();
         } else {
-            List<String> list = getSQLStatements(fileName, maxRows);
+            List<SQLStatement> statements = getSQLStatements(fileName, maxRows);
             if (jdbcUrl != null) {
-                Connection conn = SQLUtils.getJdbcConnection(jdbcDriver, jdbcUrl, jdbcUser, jdbcPassword);
+                Connection connection = SQLUtils.getJdbcConnection(jdbcDriver, jdbcUrl, jdbcUser, jdbcPassword);
                 long time = System.currentTimeMillis();
-                SQLUtils.executeSQL(conn, list);
+                SQLUtils.executeSQL(connection, statements, batchSize);
                 time = System.currentTimeMillis() - time;
-                System.out.println(list.size() + " SQL statements executed in " + time + " ms");
+                System.out.println(statements.size() + " SQL statements executed in " + time + " ms");
             } else {
-                for (String sql : list) {
-                    System.out.println(sql);
-                }
+                statements.forEach(System.out::println);
             }
         }
     }
@@ -60,9 +66,10 @@ public class ConvertFragmentsToSQL {
         System.out.println("  --maxRows <count>           The maximum number of SQL statements to print (optional, default: all)");
     }
     
-    public static List<String> getSQLStatements(String fileName, long maxLines) {
+    public static List<SQLStatement> getSQLStatements(String fileName, long maxLines) {
         Json file = Json.parseFile(fileName);
-        ArrayList<String> result = new ArrayList<>();
+        List<SQLStatement> statements = new ArrayList<>();
+
         long row = 0;
 
         Json models = file.getChild("models");
@@ -86,16 +93,18 @@ public class ConvertFragmentsToSQL {
                 column.isArray = column.dataType.endsWith("]");
                 model.columns.add(column);
             }
-            result.add(model.toDropSQL());
-            result.add(model.toCreateSQL());
+            statements.add(model.toDropSQL());
+            statements.add(model.toCreateSQL());
             modelMap.put(key, model);
         }
-        
+
         Json fragments = file.getChildren().get("fragments");
-        result.add(Fragment.toDropSQL());
-        result.add(Fragment.toCreateSQL());
-        result.add(FragmentReference.toDropSQL());
-        result.addAll(FragmentReference.toCreateSQL());
+        statements.add(Fragment.toDropSQL());
+        statements.add(Fragment.toCreateSQL());
+        statements.add(FragmentReference.toDropSQL());
+        statements.addAll(FragmentReference.toCreateSQL());
+        statements.add(SQLStatement.flushingStatement);
+
         HashMap<String, Fragment> fragmentMap = new HashMap<>();
         long fragmentId = 0;
         for (Entry<String, Json> entry : fragments.getChildren().entrySet()) {
@@ -106,12 +115,13 @@ public class ConvertFragmentsToSQL {
             Json data = entry.getValue();
             String modelName = data.getStringProperty("_model");
             Model model = modelMap.get(modelName);
-            result.add(model.toInsertSQL(path, entry.getValue()));
+            statements.add(model.toInsertSQL(path, entry.getValue()));
             Fragment fragment = new Fragment(fragmentId, path, modelName);
             fragmentId++;
             fragmentMap.put(path, fragment);
-            result.add(fragment.toInsertSQL());
+            statements.add(fragment.toInsertSQL());
         }
+
         for (Entry<String, Json> entry : fragments.getChildren().entrySet()) {
             if (++row > maxLines) {
                 break;
@@ -123,11 +133,12 @@ public class ConvertFragmentsToSQL {
             Fragment fragment = fragmentMap.get(path);
             List<FragmentReference> references = model.getReferenceList(fragmentMap, fragment, data);
             for (FragmentReference ref : references) {
-                result.add(ref.toInsertSQL());
+                statements.add(ref.toInsertSQL());
             }
         }
-        
-        return result;
+
+        statements.add(SQLStatement.flushingStatement);
+        return statements;
     }
 
 }

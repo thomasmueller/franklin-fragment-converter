@@ -1,5 +1,11 @@
 package com.adobe.franklin.fragments.tables;
 
+import com.adobe.franklin.fragments.converter.sql.PreparedSQLStatement;
+import com.adobe.franklin.fragments.converter.sql.SQLArgument;
+import com.adobe.franklin.fragments.converter.sql.SQLValue;
+import com.adobe.franklin.fragments.converter.sql.SimpleSQLStatement;
+
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,28 +20,27 @@ public class FragmentReference {
         this.child = child;
     }
     
-    public static String toDropSQL() {
-        return "drop table if exists " + TABLE_NAME;
+    public static SimpleSQLStatement toDropSQL() {
+        return new SimpleSQLStatement("drop table if exists " + TABLE_NAME);
     }
     
-    public static List<String> toCreateSQL() {
-        ArrayList<String> result = new ArrayList<>();
-        StringBuilder buff = new StringBuilder();
-        buff.append("create table " + TABLE_NAME + "(\n");
-        buff.append("    parent bigint,\n");
-        buff.append("    child bigint\n");
-        buff.append(")");
-        result.add(buff.toString());
-        result.add("create index " + TABLE_NAME + "_parent_child on " + 
-                TABLE_NAME + "(parent, child)");
-        result.add("create index " + TABLE_NAME + "_child_parent on " + 
-                TABLE_NAME + "(child, parent)");
+    public static List<SimpleSQLStatement> toCreateSQL() {
+        ArrayList<SimpleSQLStatement> result = new ArrayList<>();
+        result.add(new SimpleSQLStatement( "create table " + TABLE_NAME +
+                "(\n" + "    parent bigint,\n" + "    child bigint\n" + ")"));
+        result.add(new SimpleSQLStatement(
+                "create index " + TABLE_NAME + "_parent_child on " +
+                TABLE_NAME + "(parent, child)"));
+        result.add(new SimpleSQLStatement("create index " + TABLE_NAME + "_child_parent on " +
+                TABLE_NAME + "(child, parent)"));
         return result;
     }
     
-    public String toInsertSQL() {
-        return "insert into " + TABLE_NAME + "(parent, child) values(" +
-                parent.getId() + ", " + child.getId() + ")";
+    public PreparedSQLStatement toInsertSQL() {
+        String template = "insert into " + TABLE_NAME + "(parent, child) values(?, ?)";
+        List<SQLArgument> arguments = List.of(
+                new SQLValue(Types.BIGINT, parent.getId()),
+                new SQLValue(Types.BIGINT, child.getId()));
+        return new PreparedSQLStatement(template, arguments);
     }
-
 }

@@ -1,5 +1,7 @@
 package com.adobe.franklin.fragments.converter;
 
+import java.sql.Types;
+
 class Column {
     String name;
     String dataType;
@@ -9,7 +11,20 @@ class Column {
         return "\"" + name + "\" " + dataType;
     }
 
-    public String getDefaulValue() {
+    public int getTypeNumber() {
+        switch (dataType) {
+            case "bigint":
+                return Types.BIGINT;
+            case "float8":
+                return Types.FLOAT;
+            case "boolean":
+                return Types.BOOLEAN;
+            default:
+                return Types.VARCHAR;
+        }
+    }
+
+    public String getDefaultValue() {
         switch (dataType) {
         case "bigint":
         case "float8":
