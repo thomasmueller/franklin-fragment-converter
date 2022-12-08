@@ -156,13 +156,13 @@
                 } else {
                     if (multiple.contains(p.getName())) {
                         %><%= encode(p.getName() + "S") %>: [<%
-                        for(int i=0; i<p.getValues().length; i++) {
+                 	    for(int i=0; i<p.getValues().length; i++) {
                             %><%= (i > 0 ? ", " : "") %><%= encode(p.getValues()[i].getString()) %><%
                         }
                         %>]<%
-                    } else {
+                	} else {
                         %><%= encode(p.getName()) %>: <%= encode(p.getValues()[0].getString()) %><%
-                    }
+              	    }
                 }
             }
             %>
@@ -195,6 +195,9 @@
             }
             String valueType = item.getProperty("valueType").getString();
             String name = item.getName();
+            if (item.hasProperty("name")) {
+                name = item.getProperty("name").getString();
+            }
             if (metaType.equals("text-single")) {
             } else if (metaType.equals("text-multi")) {
             } else if (metaType.equals("boolean")) {
