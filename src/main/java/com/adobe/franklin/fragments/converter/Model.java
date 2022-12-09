@@ -1,10 +1,16 @@
 package com.adobe.franklin.fragments.converter;
 
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
+import com.adobe.franklin.fragments.converter.sql.PreparedSQLStatement;
+import com.adobe.franklin.fragments.converter.sql.SQLArgument;
+import com.adobe.franklin.fragments.converter.sql.SQLStringArray;
+import com.adobe.franklin.fragments.converter.sql.SQLValue;
+import com.adobe.franklin.fragments.converter.sql.SimpleSQLStatement;
 import com.adobe.franklin.fragments.tables.Fragment;
 import com.adobe.franklin.fragments.tables.FragmentReference;
 
@@ -13,11 +19,11 @@ class Model {
     String tableName;
     ArrayList<Column> columns = new ArrayList<>();
     
-    public String toDropSQL() {
-        return "drop table if exists \"" + tableName + "\"";
+    public SimpleSQLStatement toDropSQL() {
+        return new SimpleSQLStatement("drop table if exists \"" + tableName + "\"");
     }
     
-    public String toCreateSQL() {
+    public SimpleSQLStatement toCreateSQL() {
         StringBuilder buff = new StringBuilder();
         buff.append("create table \"" + tableName + "\"(\n");
         // TODO probably the primary key needs to be a combination of the path and the variation
@@ -28,10 +34,12 @@ class Model {
             buff.append("    " + col.toCreateSQL());
         }
         buff.append("\n)");
-        return buff.toString();
+        return new SimpleSQLStatement(buff.toString());
     }
     
-    public String toInsertSQL(String path, Json data) {
+    public PreparedSQLStatement toInsertSQL(String path, Json data) {
+        List<SQLArgument> arguments = new ArrayList<>();
+
         StringBuilder buff = new StringBuilder();
         buff.append("insert into \"" + tableName + "\"(\"_path\", \"_variation\"");
         for (Column col : columns) {
@@ -39,37 +47,45 @@ class Model {
             buff.append("\"" + col.name + "\"");
         }
         buff.append(") values (");
-        buff.append(SQLUtils.convertToSQLString(path));
-        buff.append(", ");
+
+        //buff.append(SQLUtils.convertToSQLString(path));
+        arguments.add(new SQLValue(Types.VARCHAR, path));
+        buff.append("?, ");
+
         String variation = data.getStringProperty("_variation");
-        buff.append(SQLUtils.convertToSQLString(variation));
+        buff.append("?");
+        arguments.add(new SQLValue(Types.VARCHAR, variation));
+
         for (Column col : columns) {
             buff.append(", ");
-            String sqlValue;
+            SQLArgument sqlValue;
             String key = col.name;
             if (!data.containsKey(key)) {
                 key = col.name + "S";
             }
             if (!data.containsKey(key)) {
-                sqlValue = "null";
+                sqlValue = new SQLValue(Types.NULL, null);
             } else if (data.isStringProperty(key)) {
                 String value = data.getStringProperty(key);
                 if (col.isArray) {
                     List<String> list = Collections.singletonList(value);
-                    sqlValue = SQLUtils.convertToSQLValue(list);
+                    sqlValue = new SQLStringArray(list);
                 } else {
-                    sqlValue = SQLUtils.convertToSQLValue(value);
+                    sqlValue = new SQLValue(col.getTypeNumber(), value);
                 }
             } else if (data.isArray(key)) {
                 List<String> list = data.getStringArray(key);
-                sqlValue = SQLUtils.convertToSQLValue(list);
+                sqlValue = new SQLStringArray(list);
             } else {
                 throw new IllegalArgumentException(data.getChild(key).toString());
             }
-            buff.append(sqlValue);
+
+            buff.append("?");
+            arguments.add(sqlValue);
         }
         buff.append(")");
-        return buff.toString();
+
+        return new PreparedSQLStatement(buff.toString(), arguments);
     }
 
     public List<FragmentReference> getReferenceList(HashMap<String, Fragment> fragmentMap, Fragment source, Json data) {

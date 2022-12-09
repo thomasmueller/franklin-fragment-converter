@@ -56,7 +56,7 @@ public class Json {
 
     public List<String> getStringArray(String key) {
         JSONArray list = (JSONArray) json.get(key);
-        ArrayList<String> result = new ArrayList<String>(list.size());
+        ArrayList<String> result = new ArrayList<>(list.size());
         for(int i=0; i < list.size(); i++) {
             result.add((String) list.get(i));
         }
