@@ -24,3 +24,11 @@ To directly run all statements against a SQL database:
       --fileName fragments.json \
       --jdbcUrl jdbc:postgresql:test \
       --jdbcUser test
+
+To extract from a local segment store and populate a database:
+
+    java -cp "target/*:target/lib/*" \         
+      com.adobe.franklin.fragments.converter.ConvertFragmentsToSQL \
+      --oakRepo crx-quickstart/repository \
+      --jdbcUrl jdbc:postgresql:test \
+      --jdbcUser test
