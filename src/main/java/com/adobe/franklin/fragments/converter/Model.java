@@ -13,13 +13,14 @@ import com.adobe.franklin.fragments.converter.sql.SQLValue;
 import com.adobe.franklin.fragments.converter.sql.SimpleSQLStatement;
 import com.adobe.franklin.fragments.tables.Fragment;
 import com.adobe.franklin.fragments.tables.FragmentReference;
+import com.adobe.franklin.fragments.tables.Value;
 
 class Model {
     
     private final String tableName;
     private final ArrayList<Column> columns;
     private final String insertStatement;
-    
+
     public Model(String tableName, ArrayList<Column> columns) {
         this.tableName = tableName;
         this.columns = columns;
@@ -31,14 +32,13 @@ class Model {
     }
     
     public SimpleSQLStatement toCreateSQL() {
-        StringBuilder buff = new StringBuilder();
-        buff.append("create table \"" + tableName + "\"(\n");
         // TODO probably the primary key needs to be a combination of the path and the variation
-        buff.append("    \"_path\" varchar(8000) primary key,\n");
-        buff.append("    \"_variation\" varchar(8000)");
+        StringBuilder buff = new StringBuilder()
+                .append("create table \"").append(tableName).append("\"(\n")
+                .append("    \"_path\" varchar(8000) primary key,\n")
+                .append("    \"_variation\" varchar(8000)");
         for (Column col : columns) {
-            buff.append(",\n");
-            buff.append("    " + col.toCreateSQL());
+            buff.append(",\n    ").append(col.toCreateSQL());
         }
         buff.append("\n)");
         return new SimpleSQLStatement(buff.toString());
@@ -46,24 +46,20 @@ class Model {
     
     private String toInsertStatement() {
         StringBuilder buff = new StringBuilder();
-        buff.append("insert into \"" + tableName + "\"(\"_path\", \"_variation\"");
+        buff.append("insert into \"").append(tableName).append("\"(\"_path\", \"_variation\"");
         for (Column col : columns) {
-            buff.append(", ");
-            buff.append("\"" + col.name + "\"");
+            buff.append(", ").append("\"").append(col.name).append("\"");
         }
-        buff.append(") values (");
-        buff.append("?, ");
-        buff.append("?");
-        for (int i = 0; i < columns.size(); i++) {
-            buff.append(", ");
-            buff.append("?");
-        }
+        buff.append(") values (?, ?");
+        buff.append(", ?".repeat(columns.size()));
         buff.append(")");
         return buff.toString();
     }
     
-    public PreparedSQLStatement toInsertSQL(String path, Json data) {
+    public List<PreparedSQLStatement> toInsertSQL(String path, Json data) {
+        List<PreparedSQLStatement> result = new ArrayList<>();
         List<SQLArgument> arguments = new ArrayList<>();
+
         arguments.add(new SQLValue(Types.VARCHAR, path));
         String variation = data.getStringProperty("_variation");
         arguments.add(new SQLValue(Types.VARCHAR, variation));
@@ -79,19 +75,34 @@ class Model {
                 String value = data.getStringProperty(key);
                 if (col.isArray) {
                     List<String> list = Collections.singletonList(value);
-                    sqlValue = new SQLStringArray(list);
+                    sqlValue = handleArray(col.dataType,list, result);
                 } else {
-                    sqlValue = new SQLValue(col.getTypeNumber(), value);
+                    sqlValue = new SQLValue(col.getTypeCode(), value);
                 }
             } else if (data.isArray(key)) {
                 List<String> list = data.getStringArray(key);
-                sqlValue = new SQLStringArray(list);
+                sqlValue = handleArray(col.dataType, list, result);
             } else {
                 throw new IllegalArgumentException(data.getChild(key).toString());
             }
             arguments.add(sqlValue);
         }
-        return new PreparedSQLStatement(insertStatement, arguments);
+
+        result.add(new PreparedSQLStatement(insertStatement, arguments));
+        return result;
+    }
+
+    private SQLArgument handleArray(String dataType, List<String> values, List<PreparedSQLStatement> sqlStatements) {
+        if ("bigint".equals(dataType)) {
+            long valueId = Value.newId();
+            for (String value : values) {
+                Value stringValue = new Value(valueId, value);
+                sqlStatements.add(stringValue.toInsertSQL());
+            }
+            return new SQLValue(Types.BIGINT, valueId);
+        } else {
+            return new SQLStringArray(values);
+        }
     }
 
     public List<FragmentReference> getReferenceList(HashMap<String, Fragment> fragmentMap, Fragment source, Json data) {
@@ -102,8 +113,9 @@ class Model {
                 key = col.name + "S";
             }
             if (!data.containsKey(key)) {
-                // ignore
-            } else if (data.isStringProperty(key)) {
+                continue;
+            }
+            if (data.isStringProperty(key)) {
                 String value = data.getStringProperty(key);
                 FragmentReference ref = source.createReferenceIfPossible(fragmentMap, value);
                 if (ref != null) {
