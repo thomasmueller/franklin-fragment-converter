@@ -4,7 +4,6 @@ package com.adobe.franklin.fragments.extractor;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.concurrent.Executors;
@@ -19,6 +18,7 @@ import javax.jcr.Repository;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.jcr.SimpleCredentials;
+import javax.jcr.query.Query;
 import javax.jcr.query.QueryManager;
 import javax.jcr.query.QueryResult;
 
@@ -102,40 +102,20 @@ public class FragmentExtractor {
         
         QueryManager queryManager = session.getWorkspace().getQueryManager();
         String qs = "/jcr:root/content/dam//element(*, dam:Asset)[jcr:content/@contentFragment = true] option(index tag fragments)";
-        // javax.jcr.query.Query query = queryManager.createQuery(qs, Query.JCR_SQL2);
         ProgressLogger.logMessage("Loading indexes");
-        javax.jcr.query.Query query = queryManager.createQuery(qs, "xpath");
+        Query query = queryManager.createQuery(qs, "xpath");
         QueryResult result = query.execute();
         Json fragments = json.addChild("fragments");
         NodeIterator it = result.getNodes();
-        HashSet<String> multiple = new HashSet<String>();
-        HashSet<String> single = new HashSet<String>();
         ProgressLogger.logDone();
         ProgressLogger.logMessage("Reading fragments");
-        while (it.hasNext()) {
-            Node n = it.nextNode();
-            Node data = n.getNode("jcr:content").getNode("data");
-            Node master = data.getNode("master");
-            PropertyIterator pit = master.getProperties();
-            while (pit.hasNext()) {
-                Property p = pit.nextProperty();
-                if (!p.isMultiple()) {
-                    single.add(p.getName());
-                }
-                if (p.isMultiple() && p.getValues().length > 1) {
-                    multiple.add(p.getName());
-                }
-            }
-        }
         it = result.getNodes();
         TreeSet<String> modelSet = new TreeSet<>();
         while (it.hasNext()) {
-            // if (row > 10000) break;
             Node n = it.nextNode();
             Node data = n.getNode("jcr:content").getNode("data");
             String cqModel = data.getProperty("cq:model").getString();
             modelSet.add(cqModel);
-            // if(true) continue;
             Json fragment = fragments.addChild(n.getPath());
             fragment.setStringProperty("_model", cqModel);
             for (NodeIterator vit = data.getNodes(); vit.hasNext();) {
@@ -157,15 +137,11 @@ public class FragmentExtractor {
                     if (!p.isMultiple()) {
                         fragment.setStringProperty(p.getName(), p.getString());
                     } else {
-                        if (multiple.contains(p.getName())) {
-                            List<String> list = new ArrayList<>();
-                            for(int i=0; i<p.getValues().length; i++) {
-                                list.add(p.getValues()[i].getString());
-                            }
-                            fragment.setStringArray(p.getName() + "S", list);
-                        } else {
-                            fragment.setStringProperty(p.getName(), p.getValues()[0].getString());
+                        List<String> list = new ArrayList<>();
+                        for(int i=0; i<p.getValues().length; i++) {
+                            list.add(p.getValues()[i].getString());
                         }
+                        fragment.setStringArray(p.getName(), list);
                     }
                 }
             }

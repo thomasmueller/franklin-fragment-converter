@@ -51,19 +51,15 @@ public class SQLUtils {
     }
 
     public static void executeSQL(Connection connection, List<SQLStatement> statements, int batchSize) {
-        int executed = 0;
-
         for (SQLStatement statement : statements) {
             try {
                 if (statement.addBatch(connection) >= batchSize) {
-                    executed += statement.executeBatch();
-                    // ProgressLogger.logMessage("Executed " + executed + " of " + statements.size() + " statements...");
+                    statement.executeBatch();
                 }
             } catch (SQLException e) {
                 throw new IllegalArgumentException(statement.toString(), e);
             }
         }
-        // ProgressLogger.logMessage("Done");
     }
 
     public static Connection getJdbcConnection(String driver, String url, String user, String password) {

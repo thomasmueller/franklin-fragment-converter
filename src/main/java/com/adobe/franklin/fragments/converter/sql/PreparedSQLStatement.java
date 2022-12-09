@@ -3,9 +3,12 @@ package com.adobe.franklin.fragments.converter.sql;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.adobe.franklin.fragments.utils.ProgressLogger;
 
 public class PreparedSQLStatement implements SQLStatement {
     
@@ -23,7 +26,7 @@ public class PreparedSQLStatement implements SQLStatement {
     public int addBatch(Connection connection) throws SQLException {
         Prepared statement = STATEMENTS.get(template);
         if (statement == null) {
-            statement = new Prepared(connection.prepareStatement(template));
+            statement = new Prepared(template, connection.prepareStatement(template));
             STATEMENTS.put(template, statement);
         }
 
@@ -58,10 +61,12 @@ public class PreparedSQLStatement implements SQLStatement {
     }
     
     private static class Prepared {
+        private final String sql;
         private final PreparedStatement prep;
         private int count;
         
-        Prepared(PreparedStatement prep) {
+        Prepared(String sql, PreparedStatement prep) {
+            this.sql = sql;
             this.prep = prep;
         }
         
@@ -72,7 +77,12 @@ public class PreparedSQLStatement implements SQLStatement {
         }
         
         int flush() throws SQLException {
-            prep.executeBatch();
+            int[] updateCounts = prep.executeBatch();
+            for (int i = 0; i < updateCounts.length; i++) {
+                if (updateCounts[i] == Statement.EXECUTE_FAILED) {
+                    ProgressLogger.logMessage("Failed to execute " + i + ": " + sql);
+                }
+            }
             int result = count;
             count = 0;
             return result;
