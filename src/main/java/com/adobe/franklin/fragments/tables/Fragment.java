@@ -19,7 +19,7 @@ public class Fragment {
     }
     
     public static String toDropSQL() {
-        return "drop table if exists " + TABLE_NAME;
+        return "drop table if exists " + TABLE_NAME + " cascade";
     }
     
     public static String toCreateSQL() {
