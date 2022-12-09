@@ -15,7 +15,7 @@ public interface SQLStatement {
         @Override
         public int executeBatch() throws SQLException {
             // +1 for flush statement itself
-            return SimpleSQLStatement.flush() + PreparedSQLStatement.flush() + 1;
+            return SimpleSQLStatement.flush() + PreparedSQLStatement.flushAll() + 1;
         }
 
         @Override

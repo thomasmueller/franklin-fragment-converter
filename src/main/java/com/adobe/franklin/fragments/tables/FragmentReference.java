@@ -12,6 +12,8 @@ import java.util.List;
 public class FragmentReference {
 
     public static String TABLE_NAME = "fragmentRefs";
+    private final static String INSERT_STATEMENT = 
+            "insert into " + TABLE_NAME + "(parent, child) values(?, ?)";
     
     private final Fragment parent, child;
     
@@ -37,10 +39,9 @@ public class FragmentReference {
     }
     
     public PreparedSQLStatement toInsertSQL() {
-        String template = "insert into " + TABLE_NAME + "(parent, child) values(?, ?)";
         List<SQLArgument> arguments = List.of(
                 new SQLValue(Types.BIGINT, parent.getId()),
                 new SQLValue(Types.BIGINT, child.getId()));
-        return new PreparedSQLStatement(template, arguments);
+        return new PreparedSQLStatement(INSERT_STATEMENT, arguments);
     }
 }

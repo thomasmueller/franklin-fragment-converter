@@ -22,7 +22,7 @@ public class ConvertFragmentsToSQL {
         String jdbcPassword = "";
         boolean profile = false;
         long maxRows = Long.MAX_VALUE;
-        int batchSize = 1000;
+        int batchSize = 10000;
 
         for(int i=0; i<args.length; i++) {
             if ("--fileName".equals(args[i])) {
@@ -85,11 +85,10 @@ public class ConvertFragmentsToSQL {
                 break;
             }
             String key = entry.getKey();
-            Json columns = entry.getValue();
-            Model model = new Model();
-            model.tableName = key.substring(key.lastIndexOf('/') + 1);
-            model.path = key;
-            for (Entry<String, Json> col : columns.getChildren().entrySet()) {
+            Json columnsJson = entry.getValue();
+            ArrayList<Column> columns = new ArrayList<>();
+            String tableName = key.substring(key.lastIndexOf('/') + 1);
+            for (Entry<String, Json> col : columnsJson.getChildren().entrySet()) {
                 Column column = new Column();
                 column.name = col.getKey();
                 Json columnType = col.getValue();
@@ -97,8 +96,9 @@ public class ConvertFragmentsToSQL {
                 String valueType = columnType.getStringProperty("valueType");
                 column.dataType = SQLUtils.getSQLDataType(metaType, valueType);
                 column.isArray = column.dataType.endsWith("]");
-                model.columns.add(column);
+                columns.add(column);
             }
+            Model model = new Model(tableName, columns);
             statements.add(model.toDropSQL());
             statements.add(model.toCreateSQL());
             modelMap.put(key, model);

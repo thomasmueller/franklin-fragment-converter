@@ -15,9 +15,16 @@ import com.adobe.franklin.fragments.tables.Fragment;
 import com.adobe.franklin.fragments.tables.FragmentReference;
 
 class Model {
-    String path;
-    String tableName;
-    ArrayList<Column> columns = new ArrayList<>();
+    
+    private final String tableName;
+    private final ArrayList<Column> columns;
+    private final String insertStatement;
+    
+    public Model(String tableName, ArrayList<Column> columns) {
+        this.tableName = tableName;
+        this.columns = columns;
+        this.insertStatement = toInsertStatement();
+    }
     
     public SimpleSQLStatement toDropSQL() {
         return new SimpleSQLStatement("drop table if exists \"" + tableName + "\"");
@@ -37,9 +44,7 @@ class Model {
         return new SimpleSQLStatement(buff.toString());
     }
     
-    public PreparedSQLStatement toInsertSQL(String path, Json data) {
-        List<SQLArgument> arguments = new ArrayList<>();
-
+    private String toInsertStatement() {
         StringBuilder buff = new StringBuilder();
         buff.append("insert into \"" + tableName + "\"(\"_path\", \"_variation\"");
         for (Column col : columns) {
@@ -47,17 +52,22 @@ class Model {
             buff.append("\"" + col.name + "\"");
         }
         buff.append(") values (");
-
-        //buff.append(SQLUtils.convertToSQLString(path));
-        arguments.add(new SQLValue(Types.VARCHAR, path));
         buff.append("?, ");
-
-        String variation = data.getStringProperty("_variation");
         buff.append("?");
-        arguments.add(new SQLValue(Types.VARCHAR, variation));
-
-        for (Column col : columns) {
+        for (int i = 0; i < columns.size(); i++) {
             buff.append(", ");
+            buff.append("?");
+        }
+        buff.append(")");
+        return buff.toString();
+    }
+    
+    public PreparedSQLStatement toInsertSQL(String path, Json data) {
+        List<SQLArgument> arguments = new ArrayList<>();
+        arguments.add(new SQLValue(Types.VARCHAR, path));
+        String variation = data.getStringProperty("_variation");
+        arguments.add(new SQLValue(Types.VARCHAR, variation));
+        for (Column col : columns) {
             SQLArgument sqlValue;
             String key = col.name;
             if (!data.containsKey(key)) {
@@ -79,13 +89,9 @@ class Model {
             } else {
                 throw new IllegalArgumentException(data.getChild(key).toString());
             }
-
-            buff.append("?");
             arguments.add(sqlValue);
         }
-        buff.append(")");
-
-        return new PreparedSQLStatement(buff.toString(), arguments);
+        return new PreparedSQLStatement(insertStatement, arguments);
     }
 
     public List<FragmentReference> getReferenceList(HashMap<String, Fragment> fragmentMap, Fragment source, Json data) {

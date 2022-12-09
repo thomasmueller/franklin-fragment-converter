@@ -12,10 +12,13 @@ import com.adobe.franklin.fragments.converter.sql.SimpleSQLStatement;
 public class Fragment {
 
     public static String TABLE_NAME = "fragments";
+    private final static String INSERT_STATEMENT = 
+            "insert into " + TABLE_NAME + "(id, path, model) values(?, ?, ?)";
     
     private final long id;
     private final String path;
     private final String model;
+    
     
     public Fragment(long id, String path, String model) {
         this.id = id;
@@ -37,13 +40,12 @@ public class Fragment {
     }
 
     public PreparedSQLStatement toInsertSQL() {
-        String template = "insert into " + TABLE_NAME + "(id, path, model) values(?, ?, ?)";
         List<SQLArgument> arguments = List.of(
                 new SQLValue(Types.BIGINT, id),
                 new SQLValue(Types.VARCHAR, path),
                 new SQLValue(Types.VARCHAR, model)
         );
-        return new PreparedSQLStatement(template, arguments);
+        return new PreparedSQLStatement(INSERT_STATEMENT, arguments);
     }
     
     public FragmentReference createReferenceIfPossible(HashMap<String, Fragment> fragmentMap, String target) {

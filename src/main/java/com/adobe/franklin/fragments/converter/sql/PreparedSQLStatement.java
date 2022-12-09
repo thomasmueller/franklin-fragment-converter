@@ -3,14 +3,13 @@ package com.adobe.franklin.fragments.converter.sql;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 public class PreparedSQLStatement implements SQLStatement {
-    private final static Map<String, PreparedStatement> statements = new LinkedHashMap<>();
-    private final static Map<PreparedStatement, Integer> batchCounts = new HashMap<>();
+    
+    private final static Map<String, Prepared> STATEMENTS = new LinkedHashMap<>();
 
     private final String template;
     private final List<SQLArgument> arguments;
@@ -22,48 +21,61 @@ public class PreparedSQLStatement implements SQLStatement {
 
     @Override
     public int addBatch(Connection connection) throws SQLException {
-        PreparedStatement statement = statements.get(template);
+        Prepared statement = STATEMENTS.get(template);
         if (statement == null) {
-            statement = connection.prepareStatement(template);
-            statements.put(template, statement);
-            batchCounts.put(statement, 0);
+            statement = new Prepared(connection.prepareStatement(template));
+            STATEMENTS.put(template, statement);
         }
 
         for (int i = 0; i < arguments.size(); i++) {
-            arguments.get(i).insertInto(connection, statement, i+1);
+            arguments.get(i).insertInto(connection, statement.prep, i+1);
         }
-        statement.addBatch();
-
-        int newCount = batchCounts.get(statement) + 1;
-        batchCounts.put(statement, newCount);
-        return newCount;
+        return statement.addBatch();
     }
 
     @Override
     public int executeBatch() throws SQLException {
         int executeCount = 0;
-        PreparedStatement statement = statements.get(template);
+        Prepared statement = STATEMENTS.get(template);
         if (statement != null) {
-            statement.executeBatch();
-            executeCount = batchCounts.get(statement);
-            batchCounts.put(statement, 0);
+            executeCount += statement.flush();
         }
         return executeCount;
     }
 
-    static int flush() throws SQLException {
+    static int flushAll() throws SQLException {
         int flushCount = 0;
-        for (PreparedStatement statement : statements.values()) {
-            statement.executeBatch();
-            flushCount += batchCounts.get(statement);
+        for (Prepared statement : STATEMENTS.values()) {
+            flushCount += statement.flush();
         }
-        statements.clear();
-        batchCounts.clear();
+        STATEMENTS.clear();
         return flushCount;
     }
 
     @Override
     public String toString() {
         return template;
+    }
+    
+    private static class Prepared {
+        private final PreparedStatement prep;
+        private int count;
+        
+        Prepared(PreparedStatement prep) {
+            this.prep = prep;
+        }
+        
+        int addBatch() throws SQLException {
+            prep.addBatch();
+            count++;
+            return count;
+        }
+        
+        int flush() throws SQLException {
+            prep.executeBatch();
+            int result = count;
+            count = 0;
+            return result;
+        }
     }
 }
