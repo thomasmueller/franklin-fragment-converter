@@ -24,7 +24,7 @@ public class Fragment {
     }
     
     public static SimpleSQLStatement toDropSQL() {
-        return new SimpleSQLStatement("drop table if exists " + TABLE_NAME);
+        return new SimpleSQLStatement("drop table if exists " + TABLE_NAME + " cascade");
     }
     
     public static SimpleSQLStatement toCreateSQL() {

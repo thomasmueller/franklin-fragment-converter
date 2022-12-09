@@ -10,6 +10,7 @@ import com.adobe.franklin.fragments.converter.sql.SQLStatement;
 import com.adobe.franklin.fragments.converter.sql.SQLUtils;
 import com.adobe.franklin.fragments.tables.Fragment;
 import com.adobe.franklin.fragments.tables.FragmentReference;
+import com.adobe.franklin.fragments.utils.Profiler;
 
 public class ConvertFragmentsToSQL {
     
@@ -19,7 +20,7 @@ public class ConvertFragmentsToSQL {
         String jdbcUrl = null;
         String jdbcUser = "";
         String jdbcPassword = "";
-
+        boolean profile = false;
         long maxRows = Long.MAX_VALUE;
         int batchSize = 1000;
 
@@ -38,12 +39,14 @@ public class ConvertFragmentsToSQL {
                 jdbcPassword = args[++i];
             } else if ("--batchSize".equals(args[i])) {
                 batchSize = Integer.parseInt(args[++i]);
+            } else if ("--profile".equals(args[i])) {
+                profile = true;
             } else {
                 printUsage();
                 throw new IllegalArgumentException(args[i]);
             }
         }
-
+        Profiler prof = profile ? new Profiler().startCollecting() : null;
         if (fileName == null) {
             printUsage();
         } else {
@@ -57,6 +60,9 @@ public class ConvertFragmentsToSQL {
             } else {
                 statements.forEach(System.out::println);
             }
+        }
+        if (prof != null) {
+            System.out.println(prof.getTop(10));
         }
     }
     

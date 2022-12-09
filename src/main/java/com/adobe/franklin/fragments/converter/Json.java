@@ -69,8 +69,15 @@ public class Json {
 
     public static Json parseFile(String jsonFileName) {
         try {
+            long start = System.currentTimeMillis();
             String json = new String(Files.readAllBytes(Paths.get(jsonFileName)));
-            return new Json((JSONObject) new JSONParser().parse(json));
+            long time = System.currentTimeMillis() - start;
+            System.out.println("-- JSON file read in " + time + " ms");
+            start = System.currentTimeMillis();
+            Json result = new Json((JSONObject) new JSONParser().parse(json));
+            time = System.currentTimeMillis() - start;
+            System.out.println("-- JSON file parsed in " + time + " ms");
+            return result;
         } catch (Exception e) {
             throw new IllegalArgumentException(e);
         }
