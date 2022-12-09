@@ -5,6 +5,8 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
 
+import com.adobe.franklin.fragments.utils.ProgressLogger;
+
 public class SQLUtils {
     public static String getSQLDataType(String metaType, String valueType) {
         switch (metaType + " " + valueType) {
@@ -55,18 +57,17 @@ public class SQLUtils {
             try {
                 if (statement.addBatch(connection) >= batchSize) {
                     executed += statement.executeBatch();
-                    System.out.println("Executed " + executed + " of " + statements.size() + " statements...");
+                    // ProgressLogger.logMessage("Executed " + executed + " of " + statements.size() + " statements...");
                 }
             } catch (SQLException e) {
                 throw new IllegalArgumentException(statement.toString(), e);
             }
         }
-
-        System.out.println("Done");
+        // ProgressLogger.logMessage("Done");
     }
 
     public static Connection getJdbcConnection(String driver, String url, String user, String password) {
-        System.out.println("Connecting to " + url + "...");
+        ProgressLogger.logMessage("Connecting to " + url);
         if (driver == null) {
             if (url.startsWith("jdbc:postgresql:")) {
                 driver = "org.postgresql.Driver";
@@ -89,7 +90,7 @@ public class SQLUtils {
         }
         try {
             Connection conn = DriverManager.getConnection(url, user, password);
-            System.out.println("Done");
+            ProgressLogger.logDone();
             return conn;
         } catch (SQLException e) {
             throw new IllegalArgumentException(e);

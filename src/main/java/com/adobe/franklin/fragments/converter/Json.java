@@ -12,6 +12,8 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
+import com.adobe.franklin.fragments.utils.ProgressLogger;
+
 /**
  * Wrapper around a JSONObject, which adds some convenience methods.
  */
@@ -53,7 +55,12 @@ public class Json {
     public String getStringProperty(String key) {
         return (String) json.get(key);
     }
+    
+    public void setStringProperty(String key, String value) {
+        json.put(key, value);
+    }
 
+    
     public List<String> getStringArray(String key) {
         JSONArray list = (JSONArray) json.get(key);
         ArrayList<String> result = new ArrayList<>(list.size());
@@ -63,24 +70,35 @@ public class Json {
         return result;
     }
     
+    @SuppressWarnings("unchecked")
+    public void setStringArray(String key, List<String> list) {
+        JSONArray array = new JSONArray();
+        array.addAll(list);
+        json.put(key, array);
+    }
+    
     public String toString() {
         return json.toString();
     }
 
     public static Json parseFile(String jsonFileName) {
         try {
-            long start = System.currentTimeMillis();
+            ProgressLogger.logMessage("Readinng JSON file");
             String json = new String(Files.readAllBytes(Paths.get(jsonFileName)));
-            long time = System.currentTimeMillis() - start;
-            System.out.println("-- JSON file read in " + time + " ms");
-            start = System.currentTimeMillis();
+            ProgressLogger.logDone();
+            ProgressLogger.logMessage("Parsing JSON file");
             Json result = new Json((JSONObject) new JSONParser().parse(json));
-            time = System.currentTimeMillis() - start;
-            System.out.println("-- JSON file parsed in " + time + " ms");
+            ProgressLogger.logDone();
             return result;
         } catch (Exception e) {
             throw new IllegalArgumentException(e);
         }
     }
-    
+
+    public Json addChild(String key) {
+        JSONObject obj = new JSONObject();
+        json.put(key, obj);
+        return new Json(obj);
+    }
+
 }

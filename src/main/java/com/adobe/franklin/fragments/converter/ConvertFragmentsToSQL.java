@@ -8,9 +8,11 @@ import java.util.Map.Entry;
 
 import com.adobe.franklin.fragments.converter.sql.SQLStatement;
 import com.adobe.franklin.fragments.converter.sql.SQLUtils;
+import com.adobe.franklin.fragments.extractor.FragmentExtractor;
 import com.adobe.franklin.fragments.tables.Fragment;
 import com.adobe.franklin.fragments.tables.FragmentReference;
 import com.adobe.franklin.fragments.utils.Profiler;
+import com.adobe.franklin.fragments.utils.ProgressLogger;
 
 public class ConvertFragmentsToSQL {
     
@@ -20,6 +22,10 @@ public class ConvertFragmentsToSQL {
         String jdbcUrl = null;
         String jdbcUser = "";
         String jdbcPassword = "";
+        String oakNodeStore = null;
+        String oakBlobStore = null;
+        String oakUser = "admin";
+        String oakPassword = "admin";
         boolean profile = false;
         long maxRows = Long.MAX_VALUE;
         int batchSize = 10000;
@@ -37,6 +43,18 @@ public class ConvertFragmentsToSQL {
                 jdbcUser = args[++i];
             } else if ("--jdbcPassword".equals(args[i])) {
                 jdbcPassword = args[++i];
+            } else if ("--oakRepo".equals(args[i])) {
+                String oakRepo = args[++i];
+                oakNodeStore = oakRepo + "/segmentstore";
+                oakBlobStore = oakRepo + "/datastore";
+            } else if ("--oakNodeStore".equals(args[i])) {
+                oakNodeStore = args[++i];
+            } else if ("--oakBlobStore".equals(args[i])) {
+                oakBlobStore = args[++i];
+            } else if ("--oakUser".equals(args[i])) {
+                oakUser = args[++i];
+            } else if ("--oakPassword".equals(args[i])) {
+                oakPassword = args[++i];
             } else if ("--batchSize".equals(args[i])) {
                 batchSize = Integer.parseInt(args[++i]);
             } else if ("--profile".equals(args[i])) {
@@ -47,22 +65,27 @@ public class ConvertFragmentsToSQL {
             }
         }
         Profiler prof = profile ? new Profiler().startCollecting() : null;
-        if (fileName == null) {
+        if (fileName == null && oakNodeStore == null) {
             printUsage();
         } else {
-            List<SQLStatement> statements = getSQLStatements(fileName, maxRows);
+            Json file;
+            if (fileName != null) {
+                file = Json.parseFile(fileName);
+            } else {
+                file = new FragmentExtractor().extract(oakNodeStore, oakBlobStore, oakUser, oakPassword);
+            }
+            List<SQLStatement> statements = getSQLStatements(file, maxRows);
             if (jdbcUrl != null) {
                 Connection connection = SQLUtils.getJdbcConnection(jdbcDriver, jdbcUrl, jdbcUser, jdbcPassword);
-                long time = System.currentTimeMillis();
+                ProgressLogger.logMessage("Executing " + statements.size() + " SQL statements");
                 SQLUtils.executeSQL(connection, statements, batchSize);
-                time = System.currentTimeMillis() - time;
-                System.out.println(statements.size() + " SQL statements executed in " + time + " ms");
+                ProgressLogger.logDone();
             } else {
                 statements.forEach(System.out::println);
             }
         }
         if (prof != null) {
-            System.out.println(prof.getTop(10));
+            ProgressLogger.logMessage(prof.getTop(10));
         }
     }
     
@@ -72,8 +95,7 @@ public class ConvertFragmentsToSQL {
         System.out.println("  --maxRows <count>           The maximum number of SQL statements to print (optional, default: all)");
     }
     
-    public static List<SQLStatement> getSQLStatements(String fileName, long maxLines) {
-        Json file = Json.parseFile(fileName);
+    public static List<SQLStatement> getSQLStatements(Json file, long maxLines) {
         List<SQLStatement> statements = new ArrayList<>();
 
         long row = 0;
