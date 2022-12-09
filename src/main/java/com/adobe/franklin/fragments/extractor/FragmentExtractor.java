@@ -111,7 +111,9 @@ public class FragmentExtractor {
         ProgressLogger.logMessage("Reading fragments");
         it = result.getNodes();
         TreeSet<String> modelSet = new TreeSet<>();
+        int fragmentCount = 0;
         while (it.hasNext()) {
+            fragmentCount++;
             Node n = it.nextNode();
             Node data = n.getNode("jcr:content").getNode("data");
             String cqModel = data.getProperty("cq:model").getString();
@@ -146,9 +148,11 @@ public class FragmentExtractor {
                 }
             }
         }
+        int modelCount = 0;
         Json models = json.addChild("models");
         for (String model: modelSet) {
             Json modelJson = models.addChild(model);
+            modelCount++;
             Node n = session.getNode(model);
             Node items = n.getNode("jcr:content").getNode("model").getNode("cq:dialog").getNode("content").getNode("items");
             for (NodeIterator itemIt = items.getNodes(); itemIt.hasNext();) {
@@ -176,7 +180,7 @@ public class FragmentExtractor {
                 fieldJson.setStringProperty("valueType", valueType);
             }
         }
-        ProgressLogger.logDone();
+        ProgressLogger.logDone(fragmentCount + " fragments, " + modelCount + " models");
         return json;
     }
 

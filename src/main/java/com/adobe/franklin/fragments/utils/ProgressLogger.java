@@ -9,8 +9,12 @@ public class ProgressLogger {
         long elapsed = now - start;
         long time = now - last;
         last = now;
-        if ("done".equals(message)) {
-            message = "done in " + time + " ms";
+        if (message.startsWith("done")) {
+            if (message.startsWith("done ")) {
+                message = "done in " + time + " ms; " + message.substring("done ".length());
+            } else {
+                message = "done in " + time + " ms";
+            }
         } else {
             message += "...";
         }
@@ -19,5 +23,9 @@ public class ProgressLogger {
 
     public static void logDone() {
         logMessage("done");
+    }
+
+    public static void logDone(String message) {
+        logMessage("done " + message);
     }
 }
