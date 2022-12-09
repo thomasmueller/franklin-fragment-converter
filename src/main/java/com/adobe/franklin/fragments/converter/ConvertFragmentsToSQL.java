@@ -8,6 +8,7 @@ import java.util.Map.Entry;
 
 import com.adobe.franklin.fragments.tables.Fragment;
 import com.adobe.franklin.fragments.tables.FragmentReference;
+import com.adobe.franklin.fragments.utils.Profiler;
 
 public class ConvertFragmentsToSQL {
     
@@ -17,6 +18,7 @@ public class ConvertFragmentsToSQL {
         String jdbcUrl = null;
         String jdbcUser = "";
         String jdbcPassword = "";
+        boolean profile = false;
         long maxRows = Long.MAX_VALUE;
         for(int i=0; i<args.length; i++) {
             if ("--fileName".equals(args[i])) {
@@ -31,11 +33,14 @@ public class ConvertFragmentsToSQL {
                 jdbcUser = args[++i];
             } else if ("--jdbcPassword".equals(args[i])) {
                 jdbcPassword = args[++i];
+            } else if ("--profile".equals(args[i])) {
+                profile = true;
             } else {
                 printUsage();
                 throw new IllegalArgumentException(args[i]);
             }
         }
+        Profiler prof = profile ? new Profiler().startCollecting() : null;
         if (fileName == null) {
             printUsage();
         } else {
@@ -48,9 +53,12 @@ public class ConvertFragmentsToSQL {
                 System.out.println(list.size() + " SQL statements executed in " + time + " ms");
             } else {
                 for (String sql : list) {
-                    System.out.println(sql);
+                    System.out.println(sql + ";");
                 }
             }
+        }
+        if (prof != null) {
+            System.out.println(prof.getTop(10));
         }
     }
     
