@@ -50,13 +50,15 @@ public class SQLUtils {
         }
     }
 
-    public static void executeSQL(Connection connection, List<SQLStatement> statements, int batchSize) {
+    public static void executeSQL(Connection conn, List<SQLStatement> statements, int batchSize) {
         try {
-            SQLConnection conn = new SQLConnection(connection, batchSize);
+            conn.setAutoCommit(false);
+            SQLConnection sqlConn = new SQLConnection(conn, batchSize);
             for (SQLStatement statement : statements) {
-                statement.batch(conn);
+                statement.batch(sqlConn);
             }
-            conn.flush();
+            sqlConn.flush();
+            conn.setAutoCommit(true);
         } catch (SQLException e) {
             throw new IllegalArgumentException(e);
         }

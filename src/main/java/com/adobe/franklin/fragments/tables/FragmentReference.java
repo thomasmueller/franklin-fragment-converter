@@ -1,5 +1,6 @@
 package com.adobe.franklin.fragments.tables;
 
+import com.adobe.franklin.fragments.converter.sql.DatabaseType;
 import com.adobe.franklin.fragments.converter.sql.PreparedSQLStatement;
 import com.adobe.franklin.fragments.converter.sql.SQLArgument;
 import com.adobe.franklin.fragments.converter.sql.SQLValue;
@@ -22,8 +23,8 @@ public class FragmentReference {
         this.child = child;
     }
     
-    public static SimpleSQLStatement toDropSQL() {
-        return new SimpleSQLStatement("drop table if exists " + TABLE_NAME + " cascade");
+    public static SimpleSQLStatement toDropSQL(DatabaseType dbType) {
+        return new SimpleSQLStatement("drop table if exists " + TABLE_NAME + " " + dbType.getCascade());
     }
     
     public static List<SimpleSQLStatement> toCreateSQL() {

@@ -1,5 +1,6 @@
 package com.adobe.franklin.fragments.tables;
 
+import com.adobe.franklin.fragments.converter.sql.DatabaseType;
 import com.adobe.franklin.fragments.converter.sql.PreparedSQLStatement;
 import com.adobe.franklin.fragments.converter.sql.SQLArgument;
 import com.adobe.franklin.fragments.converter.sql.SQLValue;
@@ -8,15 +9,15 @@ import com.adobe.franklin.fragments.converter.sql.SimpleSQLStatement;
 import java.sql.Types;
 import java.util.List;
 
-public class Value {
-    public static String TABLE_NAME = "values";
-    private final static String INSERT_STATEMENT = "insert into " + TABLE_NAME + "(id, value) values(?, ?)";
+public class Values {
+    public static String TABLE_NAME = "val";
+    private final static String INSERT_STATEMENT = "insert into " + TABLE_NAME + "(id, val) values(?, ?)";
     private static long nextId = 0;
 
     private final long id;
     private final String value;
 
-    public Value(long id, String value) {
+    public Values(long id, String value) {
         this.id = id;
         this.value = value;
     }
@@ -25,14 +26,14 @@ public class Value {
         return nextId++;
     }
 
-    public static SimpleSQLStatement toDropSQL() {
-        return new SimpleSQLStatement("drop table if exists " + TABLE_NAME + " cascade");
+    public static SimpleSQLStatement toDropSQL(DatabaseType dbType) {
+        return new SimpleSQLStatement("drop table if exists " + TABLE_NAME + " " + dbType.getCascade());
     }
 
     public static SimpleSQLStatement toCreateSQL() {
         String sql =  "create table " + TABLE_NAME + "(\n"
                 + "    id bigint,\n"
-                + "    value text\n"
+                + "    val text\n"
                 + ")";
         return new SimpleSQLStatement(sql);
     }

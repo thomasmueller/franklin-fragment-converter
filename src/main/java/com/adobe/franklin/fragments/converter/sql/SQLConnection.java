@@ -36,7 +36,15 @@ public class SQLConnection {
     
     void flushStatements() throws SQLException {
         if (stat != null && batchCount > 0) {
-            int[] updateCounts = stat.executeBatch();
+            int[] updateCounts;
+            try {
+                updateCounts = stat.executeBatch();
+            } catch (SQLException e) {
+                if (batchCount > 10) {
+                    throw new SQLException(batchedStatements.subList(0, 10).toString(), e);
+                }
+                throw new SQLException(batchedStatements.toString(), e);
+            }
             for (int i = 0; i < updateCounts.length; i++) {
                 if (updateCounts[i] == Statement.EXECUTE_FAILED) {
                     String sql = batchedStatements.get(i);
@@ -62,6 +70,9 @@ public class SQLConnection {
     public Prepared prepareStatement(String sql) throws SQLException {
         Prepared prep = prepared.get(sql);
         if (prep == null) {
+            // flush statements, as prepared prepareStatement needs to have
+            // all tables available
+            flushStatements();
             prep = new Prepared(this, sql, maxBatchCount, conn.prepareStatement(sql));
             prepared.put(sql, prep);
         }

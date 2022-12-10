@@ -13,8 +13,8 @@ public class SQLStringArray implements SQLArgument {
     }
 
     @Override
-    public void insertInto(SQLConnection connection, PreparedStatement statement, int index) throws SQLException {
-        Array array = connection.createArrayOf("varchar", values.toArray());
-        statement.setArray(index, array);
+    public void insertInto(SQLConnection conn, PreparedStatement prep, int index) throws SQLException {
+        Array array = conn.createArrayOf("varchar", values.toArray());
+        prep.setArray(index, array);
     }
 }

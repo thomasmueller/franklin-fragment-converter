@@ -6,12 +6,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 
+import com.adobe.franklin.fragments.converter.sql.DatabaseType;
 import com.adobe.franklin.fragments.converter.sql.SQLStatement;
 import com.adobe.franklin.fragments.converter.sql.SQLUtils;
 import com.adobe.franklin.fragments.extractor.FragmentExtractor;
 import com.adobe.franklin.fragments.tables.Fragment;
 import com.adobe.franklin.fragments.tables.FragmentReference;
-import com.adobe.franklin.fragments.tables.Value;
+import com.adobe.franklin.fragments.tables.Values;
 import com.adobe.franklin.fragments.utils.Profiler;
 import com.adobe.franklin.fragments.utils.ProgressLogger;
 
@@ -81,7 +82,8 @@ public class ConvertFragmentsToSQL {
             } else {
                 file = new FragmentExtractor().extract(oakNodeStore, oakBlobStore, oakUser, oakPassword);
             }
-            List<SQLStatement> statements = getSQLStatements(file, maxRows, normalizeArrays);
+            DatabaseType dbType = DatabaseType.getFromURL(jdbcUrl);
+            List<SQLStatement> statements = getSQLStatements(file, dbType, maxRows, normalizeArrays);
             if (jdbcUrl != null) {
                 Connection connection = SQLUtils.getJdbcConnection(jdbcDriver, jdbcUrl, jdbcUser, jdbcPassword);
                 ProgressLogger.logMessage("Executing " + statements.size() + " SQL statements");
@@ -102,14 +104,14 @@ public class ConvertFragmentsToSQL {
         System.out.println("  --maxRows <count>           The maximum number of SQL statements to print (optional, default: all)");
     }
     
-    public static List<SQLStatement> getSQLStatements(Json file, long maxLines, boolean normalizeArrays) {
+    public static List<SQLStatement> getSQLStatements(Json file, DatabaseType dbType, long maxLines, boolean normalizeArrays) {
         List<SQLStatement> statements = new ArrayList<>();
 
         long row = 0;
 
         if (normalizeArrays) {
-            statements.add(Value.toDropSQL());
-            statements.add(Value.toCreateSQL());
+            statements.add(Values.toDropSQL(dbType));
+            statements.add(Values.toCreateSQL());
         }
 
         Json models = file.getChild("models");
@@ -124,6 +126,9 @@ public class ConvertFragmentsToSQL {
             String tableName = key.substring(key.lastIndexOf('/') + 1);
             for (Entry<String, Json> col : columnsJson.getChildren().entrySet()) {
                 Column column = new Column();
+                if (normalizeArrays) {
+                    column.normalize = true;
+                }
                 column.name = col.getKey();
                 Json columnType = col.getValue();
                 String metaType = columnType.getStringProperty("metaType");
@@ -131,6 +136,7 @@ public class ConvertFragmentsToSQL {
                 column.dataType = SQLUtils.getSQLDataType(metaType, valueType);
                 column.isArray = column.dataType.endsWith("[]");
                 if (column.isArray && normalizeArrays) {
+                    column.normalize = true;
                     column.dataType = "bigint";
                 }
                 columns.add(column);
@@ -142,9 +148,9 @@ public class ConvertFragmentsToSQL {
         }
 
         Json fragments = file.getChildren().get("fragments");
-        statements.add(Fragment.toDropSQL());
+        statements.add(Fragment.toDropSQL(dbType));
         statements.add(Fragment.toCreateSQL());
-        statements.add(FragmentReference.toDropSQL());
+        statements.add(FragmentReference.toDropSQL(dbType));
         statements.addAll(FragmentReference.toCreateSQL());
 
         HashMap<String, Fragment> fragmentMap = new HashMap<>();

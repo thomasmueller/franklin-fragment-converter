@@ -13,7 +13,7 @@ import com.adobe.franklin.fragments.converter.sql.SQLValue;
 import com.adobe.franklin.fragments.converter.sql.SimpleSQLStatement;
 import com.adobe.franklin.fragments.tables.Fragment;
 import com.adobe.franklin.fragments.tables.FragmentReference;
-import com.adobe.franklin.fragments.tables.Value;
+import com.adobe.franklin.fragments.tables.Values;
 
 class Model {
     
@@ -75,13 +75,13 @@ class Model {
                 String value = data.getStringProperty(key);
                 if (col.isArray) {
                     List<String> list = Collections.singletonList(value);
-                    sqlValue = handleArray(col.dataType,list, result);
+                    sqlValue = handleArray(col, list, result);
                 } else {
                     sqlValue = new SQLValue(col.getTypeCode(), value);
                 }
             } else if (data.isArray(key)) {
                 List<String> list = data.getStringArray(key);
-                sqlValue = handleArray(col.dataType, list, result);
+                sqlValue = handleArray(col, list, result);
             } else {
                 throw new IllegalArgumentException(data.getChild(key).toString());
             }
@@ -92,11 +92,11 @@ class Model {
         return result;
     }
 
-    private SQLArgument handleArray(String dataType, List<String> values, List<PreparedSQLStatement> sqlStatements) {
-        if ("bigint".equals(dataType)) {
-            long valueId = Value.newId();
+    private SQLArgument handleArray(Column column, List<String> values, List<PreparedSQLStatement> sqlStatements) {
+        if (column.normalize) {
+            long valueId = Values.newId();
             for (String value : values) {
-                Value stringValue = new Value(valueId, value);
+                Values stringValue = new Values(valueId, value);
                 sqlStatements.add(stringValue.toInsertSQL());
             }
             return new SQLValue(Types.BIGINT, valueId);

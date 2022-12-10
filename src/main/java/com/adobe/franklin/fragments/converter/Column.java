@@ -6,6 +6,7 @@ class Column {
     String name;
     String dataType;
     boolean isArray;
+    boolean normalize;
     
     public String toCreateSQL() {
         return "\"" + name + "\" " + dataType;

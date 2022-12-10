@@ -22,11 +22,15 @@ public class PreparedSQLStatement implements SQLStatement {
     
     @Override
     public void batch(SQLConnection conn) throws SQLException {
-        Prepared prep = conn.prepareStatement(sql);
-        for (int i = 0; i < arguments.size(); i++) {
-            arguments.get(i).insertInto(conn, prep.getPreparedStatement(), i + 1);
+        try {
+            Prepared prep = conn.prepareStatement(sql);
+            for (int i = 0; i < arguments.size(); i++) {
+                arguments.get(i).insertInto(conn, prep.getPreparedStatement(), i + 1);
+            }
+            prep.addBatch();
+        } catch (SQLException e) {
+            throw new SQLException(sql, e);
         }
-        prep.addBatch();
     }
 
 }
