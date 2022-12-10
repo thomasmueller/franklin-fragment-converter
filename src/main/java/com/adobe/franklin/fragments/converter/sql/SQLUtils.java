@@ -51,14 +51,14 @@ public class SQLUtils {
     }
 
     public static void executeSQL(Connection connection, List<SQLStatement> statements, int batchSize) {
-        for (SQLStatement statement : statements) {
-            try {
-                if (statement.addBatch(connection) >= batchSize) {
-                    statement.executeBatch();
-                }
-            } catch (SQLException e) {
-                throw new IllegalArgumentException(statement.toString(), e);
+        try {
+            SQLConnection conn = new SQLConnection(connection, batchSize);
+            for (SQLStatement statement : statements) {
+                statement.batch(conn);
             }
+            conn.flush();
+        } catch (SQLException e) {
+            throw new IllegalArgumentException(e);
         }
     }
 

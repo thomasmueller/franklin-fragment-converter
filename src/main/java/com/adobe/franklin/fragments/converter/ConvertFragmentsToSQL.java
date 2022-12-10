@@ -146,7 +146,6 @@ public class ConvertFragmentsToSQL {
         statements.add(Fragment.toCreateSQL());
         statements.add(FragmentReference.toDropSQL());
         statements.addAll(FragmentReference.toCreateSQL());
-        statements.add(SQLStatement.flushingStatement);
 
         HashMap<String, Fragment> fragmentMap = new HashMap<>();
         long fragmentId = 0;
@@ -180,7 +179,6 @@ public class ConvertFragmentsToSQL {
             }
         }
 
-        statements.add(SQLStatement.flushingStatement);
         return statements;
     }
 
