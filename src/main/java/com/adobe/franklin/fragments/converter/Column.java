@@ -11,7 +11,7 @@ class Column {
         return "\"" + name + "\" " + dataType;
     }
 
-    public int getTypeNumber() {
+    public int getTypeCode() {
         switch (dataType) {
             case "bigint":
                 return Types.BIGINT;
@@ -24,14 +24,4 @@ class Column {
         }
     }
 
-    public String getDefaultValue() {
-        switch (dataType) {
-        case "bigint":
-        case "float8":
-            return "\"0\"";
-        case "boolean":
-            return "\"false\"";
-        }
-        return "\"\"";
-    }
 }
