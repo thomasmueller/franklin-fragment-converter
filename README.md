@@ -1,10 +1,12 @@
 # franklin-fragment-converter
-A converter for content fragments to SQL
+
+A converter for content fragments stored in Apache Jackrabbit Oak to a relational database.
+
+Currently supported databases are PostgreSQL and SQLite, or, for testing purposes, creation of a SQL script.
 
 ## Build
 
     mvn clean install
-
 
 ## Running
 
@@ -31,4 +33,12 @@ To extract from a local segment store and populate a database:
       com.adobe.franklin.fragments.converter.ConvertFragmentsToSQL \
       --oakRepo crx-quickstart/repository \
       --jdbcUrl jdbc:postgresql:test \
+      --jdbcUser test
+      
+To populate a SQLite database:
+
+    java -cp "target/*:target/lib/*" \
+      com.adobe.franklin.fragments.converter.ConvertFragmentsToSQL \
+      --oakRepo crx-quickstart/repository \
+      --jdbcUrl jdbc:sqlite:test.sqlite \
       --jdbcUser test
