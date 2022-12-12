@@ -83,7 +83,7 @@ public class Json {
 
     public static Json parseFile(String jsonFileName) {
         try {
-            ProgressLogger.logMessage("Readinng JSON file");
+            ProgressLogger.logMessage("Reading JSON file");
             String json = new String(Files.readAllBytes(Paths.get(jsonFileName)));
             ProgressLogger.logDone();
             ProgressLogger.logMessage("Parsing JSON file");

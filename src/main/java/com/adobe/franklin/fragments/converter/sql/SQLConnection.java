@@ -62,7 +62,7 @@ public class SQLConnection {
         }
         stat.addBatch(sql);
         batchedStatements.add(sql);
-        if (batchCount++ > maxBatchCount) {
+        if (++batchCount >= maxBatchCount) {
             flush();
         }
     }
@@ -99,7 +99,7 @@ public class SQLConnection {
         
         void addBatch() throws SQLException {
             prep.addBatch();
-            if (batchCount++ > maxBatchCount) {
+            if (++batchCount >= maxBatchCount) {
                 // flush statements first, 
                 // as there could be a "create table" statement
                 conn.flushStatements();
